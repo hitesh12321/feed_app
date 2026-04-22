@@ -2,8 +2,8 @@ import 'package:andaz/Providers/posts_provider.dart';
 import 'package:andaz/Screens/LikedPage.dart';
 import 'package:andaz/Widgets/post_card.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class FeedScreen extends ConsumerStatefulWidget {
   const FeedScreen({super.key});
@@ -13,41 +13,86 @@ class FeedScreen extends ConsumerStatefulWidget {
 }
 
 class _FeedScreenState extends ConsumerState<FeedScreen> {
+  final String kUserId = dotenv.env['USER_ID'] ?? 'User_123';
+
+  // Scroll detect karne ke liye
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Scroll end pe fetchMore() call karo
+    _scrollController.addListener(() {
+      final maxScroll = _scrollController.position.maxScrollExtent;
+      final currentScroll = _scrollController.position.pixels;
+
+      // 200px pehle se load shuru karo
+      if (currentScroll >= maxScroll - 200) {
+        ref.read(feedProvider.notifier).fetchMore();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    // final provider = ref.watch(feedProvider );
+    final feedState = ref.watch(feedProvider);
+
     return Scaffold(
       appBar: AppBar(
-        title: Text("Feed App"),
+        title: const Text("Feed"),
         actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => Likedpage()),
-              );
-            },
-            child: Icon(Icons.favorite),
+          IconButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => Likedpage()),
+            ),
+            icon: const Icon(Icons.favorite),
           ),
         ],
       ),
-      body: Consumer(
-        builder: (context, ref, child) {
-          final provider = ref.watch(feedProvider);
-          return provider.when(
-            data: (value) => ListView.builder(
-              itemBuilder: (context, index) => PostCard(
-                // likeCount: value[index].likeCount,
-                // isLiked: value[index].isLiked,
-                url: value[index].media_mobile_url ?? '',
-                id: value[index].id ?? '',
+      // ── Pull to Refresh ──
+      body: RefreshIndicator(
+        onRefresh: () => ref.read(feedProvider.notifier).fetchInitial(),
+        child: feedState.posts.isEmpty
+            ? const Center(child: CircularProgressIndicator())
+            : ListView.builder(
+                controller: _scrollController,
+                itemCount: feedState.posts.length + 1, // +1 for loader
+                itemBuilder: (context, index) {
+                  if (index == feedState.posts.length) {
+                    if (feedState.isLoadingMore) {
+                      return const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    if (!feedState.hasMore) {
+                      return const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Center(child: Text("Sab posts dekh liye! 🎉")),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  }
+
+                  final post = feedState.posts[index];
+                  return PostCard(
+                    url: post.media_thumb_url ?? '',
+                    id: post.id ?? '',
+                    mobileUrl: post.media_mobile_url ?? '',
+                    rawUrl: post.media_raw_url ?? '',
+                    initialIsLiked: false,
+                    initialLikeCount: post.like_count ?? 0,
+                    userId: kUserId,
+                  );
+                },
               ),
-              itemCount: value.length,
-            ),
-            error: (error, stack) => Text(error.toString()),
-            loading: () => Center(child: const CircularProgressIndicator()),
-          );
-        },
       ),
     );
   }
