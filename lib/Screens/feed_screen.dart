@@ -1,33 +1,40 @@
+import 'package:andaz/Providers/posts_provider.dart';
+import 'package:andaz/Widgets/post_card.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-class FeedScreen extends StatefulWidget {
+class FeedScreen extends ConsumerStatefulWidget {
   const FeedScreen({super.key});
 
   @override
-  State<FeedScreen> createState() => _FeedScreenState();
+  ConsumerState<FeedScreen> createState() => _FeedScreenState();
 }
 
-class _FeedScreenState extends State<FeedScreen> {
+class _FeedScreenState extends ConsumerState<FeedScreen> {
   @override
   Widget build(BuildContext context) {
+    // final provider = ref.watch(feedProvider );
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFEA473B), 
-        elevation: 0,
-        title: const Text(
-          "FEED_SCREEN",
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-            letterSpacing: 1.5,
-          ),
-        ),
-        centerTitle: true,
+      body: Consumer(
+        builder: (context, ref, child) {
+          final provider = ref.watch(feedProvider);
+          return provider.when(
+            data: (value) => ListView.builder(
+              itemBuilder: (context, index) => PostCard(
+                
+                // likeCount: value[index].likeCount,
+                // isLiked: value[index].isLiked,
+                url: value[index].media_mobile_url ?? '',
+                id: value[index].id ?? '',
+              ),
+              itemCount: value.length,
+            ),
+            error: (error, stack) => Text(error.toString()),
+            loading: () => Center(child: const CircularProgressIndicator()),
+          );
+        },
       ),
-      body: Text("jh"),
     );
   }
 }
-
