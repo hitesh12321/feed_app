@@ -1,13 +1,16 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
-import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:gal/gal.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 
 class DetailScreen extends StatefulWidget {
   final String id;
-  final String thumbUrl;    // cache se turant dikhe
-  final String mobileUrl;   // fade-in hoga
-  final String rawUrl;      // sirf download pe fetch ho
+  final String thumbUrl; // cache se turant dikhe
+  final String mobileUrl; // fade-in hoga
+  final String rawUrl; // sirf download pe fetch ho
 
   const DetailScreen({
     required this.id,
@@ -22,8 +25,8 @@ class DetailScreen extends StatefulWidget {
 }
 
 class _DetailScreenState extends State<DetailScreen> {
-  bool _mobileLoaded = false;      // mobile image load hua ya nahi
-  bool _isDownloading = false;     // download button loader
+  bool _mobileLoaded = false; // mobile image load hua ya nahi
+  bool _isDownloading = false; // download button loader
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +44,6 @@ class _DetailScreenState extends State<DetailScreen> {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-
                   // ── Layer 1: Thumbnail (turant cache se) ──
                   Hero(
                     tag: widget.id,
@@ -77,7 +79,7 @@ class _DetailScreenState extends State<DetailScreen> {
                         child: CircularProgressIndicator(
                           value: loadingProgress.expectedTotalBytes != null
                               ? loadingProgress.cumulativeBytesLoaded /
-                                  loadingProgress.expectedTotalBytes!
+                                    loadingProgress.expectedTotalBytes!
                               : null,
                           color: Colors.white,
                           strokeWidth: 2,
@@ -85,7 +87,6 @@ class _DetailScreenState extends State<DetailScreen> {
                       );
                     },
                   ),
-
                 ],
               ),
             ),
@@ -137,7 +138,19 @@ class _DetailScreenState extends State<DetailScreen> {
 
     try {
       // 1. Permission lo
-      final status = await Permission.storage.request();
+      PermissionStatus status;
+
+      if (Platform.isAndroid) {
+        final androidInfo = await DeviceInfoPlugin().androidInfo;
+        if (androidInfo.version.sdkInt >= 33) {
+          status = await Permission.photos.request();
+        } else {
+          status = await Permission.storage.request();
+        }
+      } else {
+        status = await Permission.photos.request(); // iOS
+      }
+
       if (!status.isGranted) {
         _showSnackBar('❌ Storage permission required');
         return;
@@ -151,17 +164,8 @@ class _DetailScreenState extends State<DetailScreen> {
       );
 
       // 3. Gallery mein save karo
-      final result = await ImageGallerySaver.saveImage(
-        response.data,
-        quality: 100,
-        name: 'post_${widget.id}',
-      );
-
-      if (result['isSuccess'] == true) {
-        _showSnackBar('✅ Image saved to gallery!');
-      } else {
-        _showSnackBar('❌ Download failed');
-      }
+     await Gal.putImageBytes(response.data, name: 'post_${widget.id}');
+_showSnackBar('✅ Image saved to gallery!');
     } catch (e) {
       _showSnackBar('❌ Download failed: $e');
     } finally {
@@ -171,9 +175,9 @@ class _DetailScreenState extends State<DetailScreen> {
 
   void _showSnackBar(String message) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 }

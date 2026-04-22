@@ -1,4 +1,5 @@
 import 'package:andaz/Providers/posts_provider.dart';
+import 'package:andaz/Providers/user_provider.dart';
 import 'package:andaz/Screens/LikedPage.dart';
 import 'package:andaz/Widgets/post_card.dart';
 import 'package:flutter/material.dart';
@@ -14,7 +15,7 @@ class FeedScreen extends ConsumerStatefulWidget {
 
 class _FeedScreenState extends ConsumerState<FeedScreen> {
   final String kUserId = dotenv.env['USER_ID'] ?? 'User_123';
-
+ 
   // Scroll detect karne ke liye
   final ScrollController _scrollController = ScrollController();
 
@@ -42,7 +43,8 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
   @override
   Widget build(BuildContext context) {
     final feedState = ref.watch(feedProvider);
-
+     final userLiked = ref.watch(userLikedProvider(kUserId));
+    final likedIds = userLiked.asData?.value ?? [];
     return Scaffold(
       appBar: AppBar(
         title: const Text("Feed"),
@@ -87,7 +89,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                     id: post.id ?? '',
                     mobileUrl: post.media_mobile_url ?? '',
                     rawUrl: post.media_raw_url ?? '',
-                    initialIsLiked: false,
+                    initialIsLiked: likedIds.contains(post.id),
                     initialLikeCount: post.like_count ?? 0,
                     userId: kUserId,
                   );

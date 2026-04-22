@@ -1,17 +1,18 @@
 import 'dart:async';
 import 'package:andaz/utils/check_internet.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+typedef LikeParams = (String, String, bool, int);
+
 final likeProvider =
-    StateNotifierProvider.family<LikeNotifier, LikeState, Map<String, dynamic>>(
+    StateNotifierProvider.family<LikeNotifier, LikeState, LikeParams>(
       (ref, params) => LikeNotifier(
-        postId: params['postId'] as String,
-        userId: params['userId'] as String,
-        initialIsLiked: params['initialIsLiked'] as bool,
-        initialLikeCount: params['initialLikeCount'] as int,
+        postId: params.$1,
+        userId: params.$2,
+        initialIsLiked: params.$3,
+        initialLikeCount: params.$4,
       ),
     );
 
@@ -33,12 +34,10 @@ class LikeNotifier extends StateNotifier<LikeState> {
        super(LikeState(isLiked: initialIsLiked, likeCount: initialLikeCount));
 
   Future<void> toggleLike(BuildContext context) async {
-    // 1. Turant UI update
     final newIsLiked = !state.isLiked;
     final newCount = newIsLiked ? state.likeCount + 1 : state.likeCount - 1;
     state = LikeState(isLiked: newIsLiked, likeCount: newCount);
 
-    // 2. Debounce — 800ms baad ek hi call jaayegi
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 800), () async {
       await _syncWithServer(context);
@@ -48,28 +47,22 @@ class LikeNotifier extends StateNotifier<LikeState> {
   Future<void> _syncWithServer(BuildContext context) async {
     final intendedLiked = state.isLiked;
 
-    // 3. Internet check
     final hasInternet = await hasActualInternet();
 
     if (!hasInternet) {
-      // Revert karo
       state = LikeState(isLiked: _serverIsLiked, likeCount: _serverLikeCount);
       _showSnackBar(context, '📶 No internet. Like nahi ho paya.');
       return;
     }
 
-    // 4. RPC call
     try {
       await Supabase.instance.client.rpc(
         'toggle_like',
         params: {'p_post_id': postId, 'p_user_id': userId},
       );
-
-      // Server sync successful
       _serverIsLiked = intendedLiked;
       _serverLikeCount = state.likeCount;
     } catch (e) {
-      // Revert karo
       state = LikeState(isLiked: _serverIsLiked, likeCount: _serverLikeCount);
       _showSnackBar(context, '❌ Like failed. Please try again.');
     }
