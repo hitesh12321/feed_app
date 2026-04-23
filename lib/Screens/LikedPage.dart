@@ -15,6 +15,15 @@ class _LikedpageState extends ConsumerState<Likedpage> {
   final String kUserId = dotenv.env['USER_ID']!;
   final ScrollController _scrollController = ScrollController();
   @override
+  void initState() {
+    super.initState();
+    // Page open hote hi fresh fetch karo
+    Future.microtask(() {
+      ref.invalidate(userLikedProvider(kUserId));
+    });
+  }
+
+  @override
   void dispose() {
     _scrollController.dispose();
     super.dispose();
