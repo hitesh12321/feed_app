@@ -38,13 +38,11 @@ class _DetailScreenState extends State<DetailScreen> {
       ),
       body: Column(
         children: [
-          // ── Image Section ──
           Expanded(
             child: Center(
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  // ── Layer 1: Thumbnail (turant cache se) ──
                   Hero(
                     tag: widget.id,
                     child: Image.network(
@@ -54,14 +52,13 @@ class _DetailScreenState extends State<DetailScreen> {
                     ),
                   ),
 
-                  // ── Layer 2: Mobile Image fade-in ──
                   Image.network(
                     widget.mobileUrl,
                     fit: BoxFit.contain,
                     width: double.infinity,
                     loadingBuilder: (context, child, loadingProgress) {
                       if (loadingProgress == null) {
-                        // Load ho gaya — fade-in karo
+                        // — fade-in karo
                         WidgetsBinding.instance.addPostFrameCallback((_) {
                           if (mounted) {
                             setState(() => _mobileLoaded = true);
@@ -73,7 +70,7 @@ class _DetailScreenState extends State<DetailScreen> {
                           child: child,
                         );
                       }
-                      // Load ho raha hai — thumbnail ke upar progress dikho
+
                       return Positioned(
                         bottom: 10,
                         child: CircularProgressIndicator(
@@ -92,7 +89,6 @@ class _DetailScreenState extends State<DetailScreen> {
             ),
           ),
 
-          // ── Download Button ──
           Padding(
             padding: const EdgeInsets.all(20),
             child: SizedBox(
@@ -132,12 +128,11 @@ class _DetailScreenState extends State<DetailScreen> {
     );
   }
 
-  // ── Download Function ──
   Future<void> _downloadHighRes() async {
     setState(() => _isDownloading = true);
 
     try {
-      // 1. Permission lo
+      // to take permission for storage or photos based on platform and android version
       PermissionStatus status;
 
       if (Platform.isAndroid) {
@@ -148,11 +143,12 @@ class _DetailScreenState extends State<DetailScreen> {
           status = await Permission.storage.request();
         }
       } else {
-        status = await Permission.photos.request(); // iOS
+        status = await Permission.photos
+            .request(); // iOS ke liye photos permission
       }
 
       if (!status.isGranted) {
-        _showSnackBar('❌ Storage permission required');
+        _showSnackBar('⚠️ Storage permission is required to download.');
         return;
       }
 
@@ -164,10 +160,10 @@ class _DetailScreenState extends State<DetailScreen> {
       );
 
       // 3. Gallery mein save karo
-     await Gal.putImageBytes(response.data, name: 'post_${widget.id}');
-_showSnackBar('✅ Image saved to gallery!');
+      await Gal.putImageBytes(response.data, name: 'post_${widget.id}');
+      _showSnackBar('✅ Image saved to gallery!');
     } catch (e) {
-      _showSnackBar('❌ Download failed: $e');
+      _showSnackBar('❌ Download failed. Please try again.');
     } finally {
       setState(() => _isDownloading = false);
     }

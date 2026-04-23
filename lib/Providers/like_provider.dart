@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:andaz/utils/check_internet.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/legacy.dart';
+import 'package:riverpod/legacy.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 typedef LikeParams = (String, String, bool, int);
