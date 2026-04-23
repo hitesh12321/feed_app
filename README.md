@@ -22,7 +22,7 @@ A high-performance, infinite-scrolling social feed built with Flutter and Supaba
 | State Management | Riverpod (`StateNotifierProvider`) |
 | Backend | Supabase (Database, Storage, RPC) |
 | Image Loading | `Image.network` with `cacheWidth` |
-| Download | Dio + Gal |
+| Download | Dio (HTTP client) + Gal (Gallery save) |
 | Env Config | `flutter_dotenv` |
 
 ---
@@ -60,11 +60,22 @@ This ensures the database is never desynced even with spam clicking (15 taps in 
 
 ### 3. User Liked Posts — `userLikedProvider` (FutureProvider.family)
 
-Fetches all post IDs liked by the current user from `user_likes` table. Used in the feed to pass `initialIsLiked` to each `PostCard`.
+Fetches all post IDs liked by the current user from `user_likes` table in a single query. The result is passed as `initialIsLiked` to each `PostCard` — this avoids making N individual network calls per card.
+
+```dart
+final userLiked = ref.watch(userLikedProvider(kUserId));
+final likedIds = userLiked.asData?.value ?? [];
+// then per card:
+initialIsLiked: likedIds.contains(post.id)
+```
 
 ### 4. Liked Page URLs — `LikedPostsurlProvider` (FutureProvider.family)
 
-Takes the list of liked post IDs and fetches their `media_thumb_url` values for the grid display.
+Takes the full list of liked post IDs and fetches all their `media_thumb_url` values in one batch query using `.inFilter()` — instead of N individual queries per liked post.
+
+### Why FutureProvider for 3 & 4, not StateNotifier?
+
+`FutureProvider` is the right fit here because these are **read-only, one-time async fetches** with no local mutation needed. The `.when(data, loading, error)` API gives clean handling of all three states out of the box. Using `StateNotifier` would be unnecessary complexity for data that doesn't need to be mutated locally.
 
 ---
 
