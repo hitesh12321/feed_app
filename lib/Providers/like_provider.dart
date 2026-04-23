@@ -4,34 +4,32 @@ import 'package:flutter/material.dart';
 import 'package:riverpod/legacy.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-typedef LikeParams = (String, String, bool, int);
+typedef LikeParams = (String, String);
 
 final likeProvider =
     StateNotifierProvider.family<LikeNotifier, LikeState, LikeParams>(
-      (ref, params) => LikeNotifier(
-        postId: params.$1,
-        userId: params.$2,
-        initialIsLiked: params.$3,
-        initialLikeCount: params.$4,
-      ),
+      (ref, params) => LikeNotifier(postId: params.$1, userId: params.$2),
     );
 
 class LikeNotifier extends StateNotifier<LikeState> {
   final String postId;
   final String userId;
   Timer? _debounceTimer;
+  bool _initialized = false;
 
-  bool _serverIsLiked;
-  int _serverLikeCount;
+  bool _serverIsLiked = false;
+  int _serverLikeCount = 0;
 
-  LikeNotifier({
-    required this.postId,
-    required this.userId,
-    required bool initialIsLiked,
-    required int initialLikeCount,
-  }) : _serverIsLiked = initialIsLiked,
-       _serverLikeCount = initialLikeCount,
-       super(LikeState(isLiked: initialIsLiked, likeCount: initialLikeCount));
+  LikeNotifier({required this.postId, required this.userId})
+    : super(LikeState(isLiked: false, likeCount: 0));
+
+  void initializeIfNeeded(bool isLiked, int likeCount) {
+    if (_initialized) return; // ← already set hai toh ignore karo
+    _initialized = true;
+    _serverIsLiked = isLiked;
+    _serverLikeCount = likeCount;
+    state = LikeState(isLiked: isLiked, likeCount: likeCount);
+  }
 
   Future<void> toggleLike(BuildContext context) async {
     final newIsLiked = !state.isLiked;

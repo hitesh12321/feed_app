@@ -25,18 +25,17 @@ class PostCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final params = (
-      id,
-      userId,
-      initialIsLiked,
-      initialLikeCount,
-    ); // ✅ Record, not Map
+    final params = (id, userId); // ✅ Record, not Map
 
     final likeState = ref.watch(likeProvider(params));
 
     final screenWidth = MediaQuery.of(context).size.width;
     final dpr = MediaQuery.of(context).devicePixelRatio;
     final cacheW = (screenWidth * dpr).toInt();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+    ref.read(likeProvider(params).notifier)
+        .initializeIfNeeded(initialIsLiked, initialLikeCount);
+  });
 
     return RepaintBoundary(
       child: Container(
